@@ -55,6 +55,10 @@ if not st.session_state.setup_complete:
         st.session_state["position"] = "Data Scientist"
     if "company" not in st.session_state:
         st.session_state["company"] = "Amazon"
+    if "custom_position" not in st.session_state:
+        st.session_state["custom_position"] = ""
+    if "custom_company" not in st.session_state:
+        st.session_state["custom_company"] = ""
 
     col1, col2 = st.columns(2)
     with col1:
@@ -66,17 +70,41 @@ if not st.session_state.setup_complete:
         )
 
     with col2:
-        st.session_state["position"] = st.selectbox(
+        position_options = ["Data Scientist", "Data Engineer", "ML Engineer", "BI Analyst", "Financial Analyst", "Other (specify below)"]
+        selected_position = st.selectbox(
             "Choose a position",
-            ("Data Scientist", "Data Engineer", "ML Engineer", "BI Analyst", "Financial Analyst"),
-            index=("Data Scientist", "Data Engineer", "ML Engineer", "BI Analyst", "Financial Analyst").index(st.session_state["position"])
+            position_options,
+            index=position_options.index(st.session_state["position"]) if st.session_state["position"] in position_options else 0
         )
+        
+        if selected_position == "Other (specify below)":
+            st.session_state["custom_position"] = st.text_input(
+                "Specify position",
+                value=st.session_state["custom_position"],
+                placeholder="Enter custom position",
+                max_chars=50
+            )
+            st.session_state["position"] = st.session_state["custom_position"] if st.session_state["custom_position"] else "Data Scientist"
+        else:
+            st.session_state["position"] = selected_position
 
-    st.session_state["company"] = st.selectbox(
+    company_options = ["Amazon", "Meta", "Udemy", "365 Company", "Nestle", "LinkedIn", "Spotify", "Other (specify below)"]
+    selected_company = st.selectbox(
         "Select a Company",
-        ("Amazon", "Meta", "Udemy", "365 Company", "Nestle", "LinkedIn", "Spotify"),
-        index=("Amazon", "Meta", "Udemy", "365 Company", "Nestle", "LinkedIn", "Spotify").index(st.session_state["company"])
+        company_options,
+        index=company_options.index(st.session_state["company"]) if st.session_state["company"] in company_options else 0
     )
+    
+    if selected_company == "Other (specify below)":
+        st.session_state["custom_company"] = st.text_input(
+            "Specify company",
+            value=st.session_state["custom_company"],
+            placeholder="Enter custom company",
+            max_chars=50
+        )
+        st.session_state["company"] = st.session_state["custom_company"] if st.session_state["custom_company"] else "Amazon"
+    else:
+        st.session_state["company"] = selected_company
 
 
 
@@ -163,14 +191,37 @@ if st.session_state.feedback_shown:
     feedback_completion = feedback_client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": """You are a helpful tool that provides feedback on an interviewee performance.
-             Before the Feedback give a score of 1 to 10.
-             Follow this format:
-             Overal Score: //Your score
-             Feedback: //Here you put your feedback
-             Give only the feedback do not ask any additional questins.
-              """},
-            {"role": "user", "content": f"This is the interview you need to evaluate. Keep in mind that you are only a tool. And you shouldn't engage in any converstation: {conversation_history}"}
+            {"role": "system", "content": f"""You are an expert HR interviewer evaluator specializing in {st.session_state['position']} roles at {st.session_state['level']} level.
+
+Analyze the interview performance across these dimensions:
+1. **Technical Knowledge** (0-10): Depth of skills and experience relevant to {st.session_state['position']}
+2. **Communication** (0-10): Clarity, structure, and professionalism
+3. **Cultural Fit** (0-10): Alignment with {st.session_state['company']} values and work style
+4. **Problem-Solving** (0-10): Analytical thinking and approach to challenges
+5. **Enthusiasm & Engagement** (0-10): Interest in role and company
+
+Provide your evaluation in this format:
+
+**Overall Score: X/10**
+
+**Detailed Scores:**
+- Technical Knowledge: X/10
+- Communication: X/10
+- Cultural Fit: X/10
+- Problem-Solving: X/10
+- Enthusiasm & Engagement: X/10
+
+**Strengths:**
+[2-3 specific strengths observed]
+
+**Areas for Improvement:**
+[2-3 actionable suggestions]
+
+**Final Recommendation:**
+[Brief statement on candidacy]
+
+Be constructive, specific, and reference actual responses from the interview."""},
+            {"role": "user", "content": f"Evaluate this interview for a {st.session_state['level']} {st.session_state['position']} position at {st.session_state['company']}:\n\n{conversation_history}"}
         ]
     )
 
